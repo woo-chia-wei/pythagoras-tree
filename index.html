@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Pythagoras Tree</title>
+		<style>
+			
+		</style>
+	</head>
+	<body>
+		<h1><i>Pythagoras Tree</i></h1>
+		<div id="instruction">
+			<p><b>Instruction</b>: Click and drag the largest square to reposition.</p>
+		</div>
+		<div id="controller">
+			<button id="redraw">Redraw</button>
+			Degree:&nbsp;<input id="degree" type="number" min="0" max="90" value="30"/>
+			<input type="checkbox" id="evolution" checked>Evolution
+		</div>
+		
+		<br>
+		<div id="screen">
+			<canvas id="mycanvas" style="border: 1px solid black;"></canvas>
+		</div>
+		<script src="libraries/processing.min.js"></script>
+		<script type="text/processing" data-processing-target="mycanvas">
+		
+			double theta = 30; 									//Angle of triangle
+			PVector r1 = new PVector(450, 550); 				//Root node 1
+			PVector r2 = new PVector(550, 550); 				//Root node 2
+			PVector[] corners = []; 							//Collection of top corners
+			iteration = 10; 									//Number of iterations (depth of tree)
+			color backgroudColor = color(253, 245, 230);		//Color of background
+			color triangleColor = color(253, 245, 230); 		//Color of triangle shape
+			color squareColor = color(0, 0, 0); 				//Color of square shape
+			boolean evolution = true;                           //If checked, display in evolution mode
+			boolean editMode = false;                            //True if in edit mode
+
+			void setup(){
+				size(1000, 600);
+				setBackGround();
+				drawPythagorasTree(r1, r2 ,theta ,iteration);
+				document.getElementById("redraw").addEventListener("click", function(){
+					drawPythagorasTree(r1, r2 ,theta ,iteration);
+				});
+				document.getElementById("evolution").addEventListener("change", function(){
+					evolution = this.checked;
+				});
+				document.getElementById("degree").addEventListener("change", function(){
+					theta = this.value;
+				});
+			}
+			
+			void mouseDragged(){
+				if(mouseX >= r1.x && mouseX <= r2.x && mouseY >= r1.y - 100 && mouseY <= r1.y){ 
+					editMode = true;
+					r1.x += mouseX - pmouseX;
+					r1.y += mouseY - pmouseY;
+					r2.x = r1.x + 100;
+					r2.y = r1.y;
+					setBackGround();
+					drawSquare(r1, r2);
+				}
+			}
+			
+			void setBackGround(){
+				background(backgroudColor);
+			}
+			
+			void drawPythagorasTree(r1, r2, angle, iteration){
+				corners = [];
+				setBackGround();
+				drawSquare(r1, r2);
+				PVector[] nextPoints = getSquarePoints(r1, r2);
+				corners.push(nextPoints[0]);
+				corners.push(nextPoints[1]);
+				drawSeries(angle);
+				if(evolution){
+					int count = 1;
+					var myTimer = setInterval(function(){
+						if(count > iteration || !editMode){
+							editMode = true;
+							clearInterval(myTimer);
+						}
+						updateSeries(angle);
+						drawSeries(angle);
+						count++;
+					}, 400);
+				}else{
+					for(int i = 1; i<= iteration; i++){
+						updateSeries(angle);
+						drawSeries(angle);
+					}
+				}
+			}
+
+			void updateSeries(angle){
+				var newCorners = [];
+				for(int i = 0; i < corners.length; i+=2){
+					PVector[] newPoints = getPatternPoints(corners[i] , corners[i+1], angle);
+					newCorners.push(newPoints[0]);
+					newCorners.push(newPoints[1]);
+					newCorners.push(newPoints[2]);
+					newCorners.push(newPoints[3]);
+				}
+				corners = [];
+				corners = newCorners;
+			}
+			
+			void drawSeries(angle){
+				for(int i = 0; i < corners.length; i+=2){
+					drawSinglePattern(corners[i] , corners[i+1], angle);
+				}
+			}
+			
+			PVector getTrianglePoint(v1, v2, angle){
+				PVector mid = new PVector.add(v1, v2);
+				mid.div(2);
+				PVector v3 = new PVector.sub(v2, mid);
+				v3.rotate(radians(-2 * angle));
+				v3.add(mid);
+				return v3;
+			}
+			
+			PVector[] getSquarePoints(v1, v2){
+				PVector[] output = [];
+				PVector v3 = new PVector.sub(v1, v2);
+				v3.rotate(PI/2);
+				v3.add(v2);
+				PVector v4 = new PVector.sub(v2, v1);
+				v4.rotate(-PI/2);
+				v4.add(v1);
+				output[0] = v4;
+				output[1] = v3;
+				return output;
+			}
+			
+			PVector[] getPatternPoints(v1, v2, angle){
+				PVector[] output = [];
+				PVector t = getTrianglePoint(v1, v2, angle);
+				PVector set1 = getSquarePoints(v1, t);
+				PVector set2 = getSquarePoints(t, v2);
+				output[0] = set1[0];
+				output[1] = set1[1];
+				output[2] = set2[0];
+				output[3] = set2[1];
+				return output;
+			}
+			
+			void drawTriangle(v1, v2, angle){
+				var v3 = getTrianglePoint(v1, v2, angle);
+				noStroke();
+				fill(triangleColor);
+				triangle(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y);
+			}
+			
+			void drawSquare(v1, v2){
+				PVector OtherPoints = getSquarePoints(v1, v2);
+				PVector v3 = OtherPoints[1];
+				PVector v4 = OtherPoints[0];
+				noStroke();
+				fill(squareColor);
+				quad(v1.x, v1.y, v2.x, v2.y, v3.x, v3.y, v4.x, v4.y);
+			}
+			
+			void drawSinglePattern(v1, v2, angle){
+				PVector t = getTrianglePoint(v1, v2, angle);
+				drawTriangle(v1, v2, angle);
+				drawSquare(v1, t);
+				drawSquare(t, v2);
+			}
+
+		</script>
+		<p style="text-align:right;font-size:80%;">&copy; 2015 Woo Chia Wei<p>
+	</body>
+</html>
